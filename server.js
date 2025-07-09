@@ -26,12 +26,7 @@ app.use(express.json());
 // app.options('*', cors());
 
 // ✅ MongoDB Connection
-// mongoose.connect(process.env.MONGO_URI, {
-//   useNewUrlParser: true,
-//   useUnifiedTopology: true,
-// }).then(() => console.log("MongoDB connected"))
-//   .catch((err) => console.error("MongoDB connection error:", err));
-mongoose.connect('mongodb+srv://pujamourya575:5UTC6LUWJ9IZZ2ty@cluster0.ut6yris.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0', {
+mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 }).then(() => console.log("MongoDB connected"))
