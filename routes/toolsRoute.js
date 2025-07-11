@@ -4,6 +4,7 @@ const toolsCtrl = require('../controllers/toolsController');
 const { authMiddleware } = require('../middleware/authMiddleware');
 
 router.post('/', authMiddleware, toolsCtrl.createTools);
+router.put('/:id', authMiddleware, toolsCtrl.updateTool);
 router.get('/mine', authMiddleware, toolsCtrl.getMyTools);
 router.get('/available', authMiddleware, toolsCtrl.getAvailableTools);
 router.get('/', authMiddleware, toolsCtrl.getAllTools);

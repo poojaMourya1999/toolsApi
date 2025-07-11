@@ -7,6 +7,7 @@ const toolsSchema = new mongoose.Schema({
   photo:'String',
   status: { type: String, enum: ['available', 'pending_exchange', 'sold'], default: 'available' },
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  buyer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Tools', toolsSchema);
