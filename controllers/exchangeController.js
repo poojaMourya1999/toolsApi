@@ -12,7 +12,7 @@ exports.createExchangeRequest = async (req, res) => {
       return res.status(400).json({ error: 'Invalid request' });
     }
 
-    req.user = { _id: '6843e5e4180cac61ccdf77ec' };
+    // req.user = { _id: '6843e5e4180cac61ccdf77ec' };
 
     const exchange = await ExchangeRequest.create({
       requester: req.user._id,

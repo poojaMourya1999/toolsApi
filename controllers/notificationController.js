@@ -1,7 +1,7 @@
 const Notification = require('../models/Notification');
 
 exports.getNotifications = async (req, res) => {
-    req.user = { _id: '6843e5e4180cac61ccdf77ec' };
+    // req.user = { _id: '6843e5e4180cac61ccdf77ec' };
     try {
         const notifications = await Notification.find({ user: req.user._id }).sort({ createdAt: -1 });
         res.json(notifications);
