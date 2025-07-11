@@ -3,12 +3,12 @@ const Tools = require('../models/Tools');
 exports.createTools = async (req, res) => {
     try {
         req.user = { _id: '6843e5e4180cac61ccdf77ec' };
-        const { name, description, price, type } = req.body;
+        const { name, description, price, photo } = req.body;
         const tools = await Tools.create({
             name,
             description,
             price,
-            type,
+            photo,
             owner: req.user._id,
         });
         res.status(201).json(tools);

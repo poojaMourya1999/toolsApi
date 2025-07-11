@@ -10,6 +10,7 @@ const mobileCoverRoute = require('./routes/mobileCoversRoute');
 const toolsRoute = require('./routes/toolsRoute');
 const notificationRoute = require('./routes/notificationRoute');
 const exchangeRoute = require('./routes/exchangeRoute');
+const upload = require('./middleware/upload');
 
 const app = express();
 
@@ -36,7 +37,12 @@ mongoose.connect(process.env.MONGO_URI, {
 app.get("/", (req, res) => {
   res.send("Backend running with MongoDB Atlas");
 });
+app.post('/api/upload', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
+  const fileUrl = `${req.protocol}://${req.get('host')}/${req.file.filename}`;
+  res.status(200).json({ message: 'File uploaded successfully', fileUrl });
+});
 app.use('/api/users', userRoutes);
 app.use('/api/product', productRoutes);
 app.use('/api', categoryRoute);
