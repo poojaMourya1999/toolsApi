@@ -4,8 +4,11 @@ const toolsCtrl = require('../controllers/toolsController');
 const { authMiddleware } = require('../middleware/authMiddleware');
 
 router.post('/', authMiddleware, toolsCtrl.createTools);
-router.get('/', authMiddleware, toolsCtrl.getAllAvailableTools);
-router.get('/all', authMiddleware, toolsCtrl.getAllTools);
-router.post('/:id/buy', authMiddleware, toolsCtrl.buyTools);
+router.get('/mine', authMiddleware, toolsCtrl.getMyTools);
+router.get('/available', authMiddleware, toolsCtrl.getAvailableTools);
+router.get('/', authMiddleware, toolsCtrl.getAllTools);
+router.delete('/:id', authMiddleware, toolsCtrl.deleteTool);
+router.put('/buy/:id', authMiddleware, toolsCtrl.buyTool);
+router.put('/status/:id', authMiddleware, toolsCtrl.changeToolStatus);
 
 module.exports = router;

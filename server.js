@@ -9,6 +9,7 @@ const categoryRoute = require('./routes/categoryRoute');
 const mobileCoverRoute = require('./routes/mobileCoversRoute');
 const toolsRoute = require('./routes/toolsRoute');
 const notificationRoute = require('./routes/notificationRoute');
+const dashboardRoute = require('./routes/dashboardRoute');
 const exchangeRoute = require('./routes/exchangeRoute');
 const upload = require('./middleware/upload');
 
@@ -50,6 +51,7 @@ app.use('/api/mobile-covers', mobileCoverRoute);
 app.use('/api/tools', toolsRoute);
 app.use('/api/exchange', exchangeRoute);
 app.use('/api/notifications', notificationRoute);
+app.use('/api/dashboard', dashboardRoute);
 
 // ✅ Error handling middleware
 app.use((err, req, res, next) => {

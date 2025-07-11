@@ -1,7 +1,7 @@
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
 
-exports.authMiddleware = (req, res, next) => {
+exports.authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer '))
@@ -17,3 +17,5 @@ exports.authMiddleware = (req, res, next) => {
     res.status(401).json({ error: 'Invalid token' });
   }
 };
+
+
