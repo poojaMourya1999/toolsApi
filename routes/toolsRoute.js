@@ -7,7 +7,7 @@ router.post('/', authMiddleware, toolsCtrl.createTools);
 router.put('/:id', authMiddleware, toolsCtrl.updateTool);
 router.get('/mine', authMiddleware, toolsCtrl.getMyTools);
 router.get('/available', authMiddleware, toolsCtrl.getAvailableTools);
-router.get('/', authMiddleware, toolsCtrl.getAllTools);
+router.get('/', toolsCtrl.getAllTools);
 router.delete('/:id', authMiddleware, toolsCtrl.deleteTool);
 router.put('/buy/:id', authMiddleware, toolsCtrl.buyTool);
 router.put('/status/:id', authMiddleware, toolsCtrl.changeToolStatus);

@@ -52,6 +52,7 @@ exports.updateTool = async (req, res) => {
   }
 };
 
+
 // 2. Get tools listed by current user
 exports.getMyTools = async (req, res) => {
   try {
@@ -100,24 +101,6 @@ exports.deleteTool = async (req, res) => {
 };
 
 // 6. Buy a tool
-// exports.buyTool = async (req, res) => {
-//   try {
-//     const tool = await Tools.findById(req.params.id);
-//     if (!tool || tool.status !== 'available') {
-//       return res.status(400).json({ error: 'Tool not available' });
-//     }
-//     if (tool.owner.equals(req.user._id)) {
-//       return res.status(403).json({ error: 'Cannot buy your own tool' });
-//     }
-//     tool.status = 'sold';
-//     await tool.save();
-//     res.json({ message: 'Tool purchased successfully', tool });
-//   } catch (err) {
-//     res.status(500).json({ error: err.message });
-//   }
-// };
-
-// controllers/toolsController.js
 exports.buyTool = async (req, res) => {
   try {
     const tool = await Tools.findById(req.params.id);

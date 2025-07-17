@@ -5,23 +5,27 @@ exports.getDashboardStats = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // Tools listed by the user
-    const userTools = await Tools.find({ owner: userId });
-
-    // Exchange requests made by the user
-    const exchangeRequests = await ExchangeRequest.find({ requester: userId })
-      .populate('toolsRequested', 'name photo')
-      .populate('toolsOffered', 'name photo')
-      .populate('receiver', 'name');
+    // Get counts in parallel for better performance
+    const [userToolsCount, exchangeToolsCount, totalToolsCount] = await Promise.all([
+      Tools.countDocuments({ owner: userId }),
+      ExchangeRequest.countDocuments({ owner: userId }),
+      Tools.countDocuments() // Or add any filter if needed for total tools
+    ]);
 
     res.json({
-      totalTools: userTools.length,
-      totalExchangeRequests: exchangeRequests.length,
-      tools: userTools,
-      exchangeRequests,
+      success: true,
+      stats: {
+        totalTools: totalToolsCount,
+        exchangeTools: exchangeToolsCount,
+        userTools: userToolsCount
+      }
     });
   } catch (error) {
     console.error('Dashboard stats error:', error);
-    res.status(500).json({ error: 'Failed to fetch dashboard stats' });
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch dashboard stats',
+      message: error.message 
+    });
   }
 };
