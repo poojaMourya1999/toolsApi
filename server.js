@@ -11,6 +11,7 @@ const toolsRoute = require('./routes/toolsRoute');
 const notificationRoute = require('./routes/notificationRoute');
 const dashboardRoute = require('./routes/dashboardRoute');
 const exchangeRoute = require('./routes/exchangeRoute');
+// const purchaseRoute = require('./routes/purchaseRoute')
 const upload = require('./middleware/upload');
 
 const app = express();
@@ -29,10 +30,7 @@ app.use(express.json());
 // app.options('*', cors());
 
 // ✅ MongoDB Connection
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => console.log("MongoDB connected"))
+mongoose.connect(process.env.MONGO_URI).then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
 // ✅ Routes
@@ -53,7 +51,7 @@ app.use('/api/tools', toolsRoute);
 app.use('/api/exchange', exchangeRoute);
 app.use('/api/notifications', notificationRoute);
 app.use('/api/dashboard', dashboardRoute);
-
+// app.use('/api/purchase', purchaseRoute)
 // ✅ Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);

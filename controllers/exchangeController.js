@@ -82,92 +82,61 @@ exports.getExchangeList = async (req, res) => {
   }
 };
 
-// Update Exchange Status
+// controllers/exchangeController.js
+
 exports.updateExchangeStatus = async (req, res) => {
   try {
     const { exchangeId } = req.params;
     const { status } = req.body;
-    const userId = req.user._id;
 
-    // ✅ 1. Validate incoming status
-    const validStatuses = ['pending', 'accepted', 'rejected'];
+    const validStatuses = ['accepted', 'rejected', 'cancelled', 'completed'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: 'Invalid status value' });
     }
 
-    // ✅ 2. Find exchange by ID with required tool info
     const exchange = await ExchangeRequest.findById(exchangeId)
+      .populate('requester', 'name email')
+      .populate('receiver', 'name email')
       .populate('toolsRequested')
       .populate('toolsOffered');
 
     if (!exchange) {
-      return res.status(404).json({ error: 'Exchange request not found' });
+      return res.status(404).json({ error: 'Exchange not found' });
     }
 
-    // ✅ 3. Check if current user is the rightful receiver
-    if (!exchange.receiver.equals(userId)) {
-      return res.status(403).json({ error: 'Only the receiver can update the status' });
+    // Only the receiver or requester can update the status
+    const userId = req.user._id;
+    if (!exchange.receiver.equals(userId) && !exchange.requester.equals(userId)) {
+      return res.status(403).json({ error: 'Not authorized to update this exchange' });
     }
 
-    // ✅ 4. Update exchange status
+    // Update exchange status
     exchange.status = status;
     await exchange.save();
 
-    const toolsRequestedId = exchange.toolsRequested._id;
-    const toolsOfferedId = exchange.toolsOffered._id;
-
-    // ✅ 5. Handle tool status updates based on exchange status
+    // Optional: update tool statuses based on the exchange status
     if (status === 'accepted') {
-      await Tools.findByIdAndUpdate(toolsRequestedId, {
-        status: 'exchanged',
-        buyer: exchange.requester
-      });
-      await Tools.findByIdAndUpdate(toolsOfferedId, {
-        status: 'exchanged',
-        buyer: exchange.receiver
-      });
-
-      // 🔔 Notify requester
-      await sendNotification(
-        exchange.requester,
-        'Exchange Accepted',
-        `Your exchange request has been accepted by ${req.user.name}`
-      );
-
-    } else if (status === 'rejected') {
-      await Tools.findByIdAndUpdate(toolsRequestedId, {
-        status: 'available',
-        buyer: null
-      });
-      await Tools.findByIdAndUpdate(toolsOfferedId, {
-        status: 'available',
-        buyer: null
-      });
-
-      // 🔔 Notify requester
-      await sendNotification(
-        exchange.requester,
-        'Exchange Rejected',
-        `Your exchange request has been rejected by ${req.user.name}`
-      );
-
-    } else if (status === 'pending') {
-      await Tools.findByIdAndUpdate(toolsRequestedId, {
-        status: 'pending_exchange'
-      });
-      await Tools.findByIdAndUpdate(toolsOfferedId, {
-        status: 'pending_exchange'
-      });
+      await Tools.findByIdAndUpdate(exchange.toolsRequested._id, { status: 'exchanged' });
+      await Tools.findByIdAndUpdate(exchange.toolsOffered._id, { status: 'exchanged' });
+    } else if (status === 'rejected' || status === 'cancelled') {
+      await Tools.findByIdAndUpdate(exchange.toolsRequested._id, { status: 'available' });
+      await Tools.findByIdAndUpdate(exchange.toolsOffered._id, { status: 'available' });
     }
 
-    // ✅ 6. Respond with success
-    res.json({
-      message: `Exchange status updated to '${status}'`,
-      exchange
-    });
+    // Determine the other party and send notification
+    const isRequester = exchange.requester._id.equals(userId);
+    const otherUser = isRequester ? exchange.receiver : exchange.requester;
+
+    await sendNotification(
+      otherUser._id,
+      'Exchange Status Updated',
+      `Your exchange request has been ${status} by ${req.user.name}.`
+    );
+
+    res.json({ success: true, message: `Exchange ${status} successfully`, exchange });
 
   } catch (err) {
-    console.error('Exchange status update error:', err);
-    res.status(500).json({ error: 'Server error occurred' });
+    res.status(500).json({ success: false, error: err.message });
   }
 };
+
