@@ -116,20 +116,40 @@ exports.resetPassword = async (req, res) => {
 };
 
 // Update Profile
+// Update User Profile (including all fields except password/reset tokens)
+
 exports.updateUser = async (req, res) => {
   try {
-    const { name, email } = req.body;
-
+    const {
+      name,
+      age,
+      gender,
+      bio,
+      profilePic
+    } = req.body;
+    // Fields that can be updated
+    const updateFields = {
+      name,
+      age,
+      gender,
+      bio,
+      profilePic
+    };
+    // Remove undefined fields to avoid overwriting with null
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { name, email },
-      { new: true }
-    );
-
-    if (!user) return res.status(404).json({ error: 'User not found' });
+      updateFields,
+      { new: true, runValidators: true } // Return updated doc + validate data
+    ).select('-password -resetToken -resetTokenExpiry'); // Exclude sensitive fields
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
     res.json(user);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({
+      error: err.message,
+      details: err.errors // Mongoose validation errors (if any)
+    });
   }
 };
 

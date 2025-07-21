@@ -274,61 +274,61 @@ exports.addToCart = async (req, res) => {
 
 // Updated removeFromCart
 // 10. Remove tools from cart
-exports.removeFromCart = async (req, res) => {
-  try {
-    const { cartItemId } = req.params;
+// exports.removeFromCart = async (req, res) => {
+//   try {
+//     const { cartItemId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(cartItemId)) {
-      return res.status(400).json({ error: 'Invalid cart item ID' });
-    }
+//     if (!mongoose.Types.ObjectId.isValid(cartItemId)) {
+//       return res.status(400).json({ error: 'Invalid cart item ID' });
+//     }
 
-    const deletedItem = await Cart.findOneAndDelete({
-      _id: cartItemId,
-      user: req.user._id
-    });
+//     const deletedItem = await Cart.findOneAndDelete({
+//       _id: cartItemId,
+//       user: req.user._id
+//     });
 
-    if (!deletedItem) {
-      return res.status(404).json({ error: 'Cart item not found' });
-    }
+//     if (!deletedItem) {
+//       return res.status(404).json({ error: 'Cart item not found' });
+//     }
 
-    // Get updated status
-    const tools = await Tools.find().populate('owner', 'name email');
-    const result = await getToolsWithCartStatus(tools, req.user._id);
+//     // Get updated status
+//     const tools = await Tools.find().populate('owner', 'name email');
+//     const result = await getToolsWithCartStatus(tools, req.user._id);
 
-    res.json({
-      message: 'Removed from cart successfully',
-      deletedItem,
-      updatedTools: result
-    });
+//     res.json({
+//       message: 'Removed from cart successfully',
+//       deletedItem,
+//       updatedTools: result
+//     });
 
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-// 11. Get Cart List (no changes needed here)
-exports.getCartList = async (req, res) => {
-  try {
-    const userId = req.user._id;
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
+// // 11. Get Cart List (no changes needed here)
+// exports.getCartList = async (req, res) => {
+//   try {
+//     const userId = req.user._id;
 
-    const cartItems = await Cart.find({ user: userId })
-      .populate({
-        path: 'tool',
-        match: { _id: { $exists: true } } // Ignore invalid references
-      })
-      .lean();
+//     const cartItems = await Cart.find({ user: userId })
+//       .populate({
+//         path: 'tool',
+//         match: { _id: { $exists: true } } // Ignore invalid references
+//       })
+//       .lean();
 
-    // Filter out items with invalid tools
-    const validItems = cartItems.filter(item => item.tool !== null);
+//     // Filter out items with invalid tools
+//     const validItems = cartItems.filter(item => item.tool !== null);
 
-    res.status(200).json(validItems);
-  } catch (err) {
-    console.error('Cart fetch error:', err);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch cart items'
-    });
-  }
-};
+//     res.status(200).json(validItems);
+//   } catch (err) {
+//     console.error('Cart fetch error:', err);
+//     res.status(500).json({
+//       success: false,
+//       error: 'Failed to fetch cart items'
+//     });
+//   }
+// };
 // 12. get tool by id
 exports.getToolById = async (req, res) => {
   try {

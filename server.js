@@ -12,9 +12,12 @@ const notificationRoute = require('./routes/notificationRoute');
 const dashboardRoute = require('./routes/dashboardRoute');
 const exchangeRoute = require('./routes/exchangeRoute');
 // const purchaseRoute = require('./routes/purchaseRoute')
+const cartRoute = require('./routes/cartRoute')
 const upload = require('./middleware/upload');
 
 const app = express();
+app.use(express.json()); // For JSON data
+app.use(express.urlencoded({ extended: true })); // For form data
 
 // ✅ CORS middleware (for development, allow all)
 app.use(cors({
@@ -23,7 +26,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-app.use(express.json());
+
 
 
 // ✅ Handle preflight OPTIONS request globally (optional but good)
@@ -51,6 +54,7 @@ app.use('/api/tools', toolsRoute);
 app.use('/api/exchange', exchangeRoute);
 app.use('/api/notifications', notificationRoute);
 app.use('/api/dashboard', dashboardRoute);
+app.use('/api/cart', cartRoute);
 // app.use('/api/purchase', purchaseRoute)
 // ✅ Error handling middleware
 app.use((err, req, res, next) => {

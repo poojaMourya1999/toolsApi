@@ -15,8 +15,8 @@ router.get('/:id', authMiddleware, toolsCtrl.getToolById);
 
 // add to cart 
 router.post('/add-to-cart', authMiddleware, toolsCtrl.addToCart);
-router.delete('/cart/:_id', authMiddleware, toolsCtrl.removeFromCart);
-router.get('/cart', authMiddleware, toolsCtrl.getCartList);
+// router.delete('/cart/:_id', authMiddleware, toolsCtrl.removeFromCart);
+// router.get('/cart', authMiddleware, toolsCtrl.getCartList);
 
 // create order 
 router.post('/order', authMiddleware, toolsCtrl.createOrder);

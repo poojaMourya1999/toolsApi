@@ -8,15 +8,16 @@ const {
   updateUser,
   getUserById,
 } = require('../controllers/userController');
+const { authMiddleware } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
 router.post('/', registerUser);
 router.post('/login', loginUser);
-router.delete('/:id', deleteUser);
-router.put('/:id', updateUser);
+router.delete('/:id', authMiddleware, deleteUser);
+router.put('/:id', authMiddleware, updateUser);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password/:token', resetPassword);
-router.get('/user/:id', getUserById);
+router.get('/user/:id',authMiddleware, getUserById);
 
 module.exports = router;
