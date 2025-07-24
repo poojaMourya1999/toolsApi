@@ -4,6 +4,6 @@ const notificationCtrl = require('../controllers/notificationController');
 const { authMiddleware } = require('../middleware/authMiddleware');
 
 router.get('/', authMiddleware,  notificationCtrl.getNotifications);
-router.patch('/:id/read', authMiddleware, notificationCtrl.markRead);
+router.patch('/read/:id', authMiddleware, notificationCtrl.markRead);
 
 module.exports = router;

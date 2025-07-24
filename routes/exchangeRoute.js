@@ -5,6 +5,6 @@ const auth = require('../middleware/authMiddleware');
 
 router.post('/', auth.authMiddleware, exchangeCtrl.createExchangeRequest);
 router.get('/', auth.authMiddleware, exchangeCtrl.getExchangeList);
-router.put('/status/:exchangeId', auth.authMiddleware, exchangeCtrl.updateExchangeStatus);
+router.put('/status/:id', auth.authMiddleware, exchangeCtrl.updateExchangeStatus);
 
 module.exports = router;

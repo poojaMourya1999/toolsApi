@@ -2,8 +2,6 @@ require('dotenv').config();
 const bcrypt = require('bcrypt');
 const User = require('../models/Users');
 const jwt = require('jsonwebtoken');
-
-
 // Generate token
 const generateToken = (user) => {
   return jwt.sign(

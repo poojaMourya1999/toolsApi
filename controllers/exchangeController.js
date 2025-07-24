@@ -1,7 +1,8 @@
 // // controllers/exchangeController.js
 const ExchangeRequest = require('../models/ExchangeRequest');
+const Notification = require('../models/Notification');
 const Tools = require('../models/Tools');
-const sendNotification = require('../utils/sendNotification');
+
 
 exports.createExchangeRequest = async (req, res) => {
   try {
@@ -17,7 +18,16 @@ exports.createExchangeRequest = async (req, res) => {
     if (toolsRequested.owner.equals(req.user._id)) {
       return res.status(400).json({ error: 'Cannot request exchange with your own tool' });
     }
+    const notification = new Notification({
+      user: req.user._id, // ID of the tool owner
+      title: 'Exchange Request',
+      message: `${req.user.name} wants to exchange tools with you`,
+      type: 'EXCHANGE_REQUEST',
+      relatedEntity: exchange._id,
+      relatedEntityModel: 'Exchange'
+    });
 
+    await notification.save();
     const exchange = await ExchangeRequest.create({
       requester: req.user._id,
       receiver: toolsRequested.owner,
@@ -30,12 +40,12 @@ exports.createExchangeRequest = async (req, res) => {
     await Tools.findByIdAndUpdate(toolsOfferedId, { status: 'pending_exchange' });
 
     // 🔔 Send notification
-    await sendNotification(
-      toolsRequested.owner,
-      'Exchange Request',
-      `User ${req.user.name} wants to exchange a tool with you.`
-    );
-    
+    // await sendNotification(
+    //   toolsRequested.owner,
+    //   'Exchange Request',
+    //   `User ${req.user.name} wants to exchange a tool with you.`
+    // );
+
     res.status(201).json({ message: 'Exchange request sent', exchange });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -52,11 +62,11 @@ exports.getExchangeList = async (req, res) => {
         { receiver: userId }
       ]
     })
-    .populate('requester', 'name email')
-    .populate('receiver', 'name email')
-    .populate('toolsRequested', 'name photo description status') // Only include necessary fields
-    .populate('toolsOffered', 'name photo description status')  // Only include necessary fields
-    .sort({ createdAt: -1 });
+      .populate('requester', 'name email')
+      .populate('receiver', 'name email')
+      .populate('toolsRequested', 'name photo description status') // Only include necessary fields
+      .populate('toolsOffered', 'name photo description status')  // Only include necessary fields
+      .sort({ createdAt: -1 });
 
     // Format the response to clearly show which exchanges are incoming vs outgoing
     const formattedExchanges = exchanges.map(exchange => {
@@ -74,69 +84,130 @@ exports.getExchangeList = async (req, res) => {
       exchanges: formattedExchanges
     });
   } catch (err) {
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Failed to fetch exchanges',
-      message: err.message 
+      message: err.message
     });
   }
 };
 
-// controllers/exchangeController.js
-
 exports.updateExchangeStatus = async (req, res) => {
   try {
-    const { exchangeId } = req.params;
+    const id = req.params.id ; // Fallback to static ID if needed
     const { status } = req.body;
 
-    const validStatuses = ['accepted', 'rejected', 'cancelled', 'completed'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ error: 'Invalid status value' });
-    }
-
-    const exchange = await ExchangeRequest.findById(exchangeId)
-      .populate('requester', 'name email')
-      .populate('receiver', 'name email')
-      .populate('toolsRequested')
-      .populate('toolsOffered');
-
-    if (!exchange) {
-      return res.status(404).json({ error: 'Exchange not found' });
-    }
-
-    // Only the receiver or requester can update the status
-    const userId = req.user._id;
-    if (!exchange.receiver.equals(userId) && !exchange.requester.equals(userId)) {
-      return res.status(403).json({ error: 'Not authorized to update this exchange' });
+    // Verify exchange exists
+    const existingExchange = await ExchangeRequest.findById(id).populate('requester receiver toolsRequested toolsOffered');
+    if (!existingExchange) {
+      return res.status(404).json({
+        success: false,
+        error: 'Exchange not found',
+        details: `No exchange found with ID: ${id}`
+      });
     }
 
     // Update exchange status
-    exchange.status = status;
-    await exchange.save();
+    const exchange = await ExchangeRequest.findByIdAndUpdate(
+      id,
+      { status, updatedAt: Date.now() },
+      { new: true }
+    ).populate('requester receiver toolsRequested toolsOffered');
 
-    // Optional: update tool statuses based on the exchange status
-    if (status === 'accepted') {
-      await Tools.findByIdAndUpdate(exchange.toolsRequested._id, { status: 'exchanged' });
-      await Tools.findByIdAndUpdate(exchange.toolsOffered._id, { status: 'exchanged' });
-    } else if (status === 'rejected' || status === 'cancelled') {
-      await Tools.findByIdAndUpdate(exchange.toolsRequested._id, { status: 'available' });
-      await Tools.findByIdAndUpdate(exchange.toolsOffered._id, { status: 'available' });
+    // Create and save notifications
+    const notifications = new Notification({
+      user: req.user._id,
+      title: 'Update Exchange Tools Status',
+      message: `${req.user.name} has placed an order for your tool status: ${status}`,
+      type: 'OTHER',
+      relatedEntity: id,
+      relatedEntityModel: 'Order'
+    });
+
+    await notifications.save();
+    // Handle completed exchange
+    if (status === 'completed') {
+      await Promise.all([
+        Tools.findByIdAndUpdate(exchange.toolsRequested._id, {
+          owner: exchange.receiver._id,
+          status: 'available'
+        }),
+        Tools.findByIdAndUpdate(exchange.toolsOffered._id, {
+          owner: exchange.requester._id,
+          status: 'available'
+        })
+      ]);
     }
 
-    // Determine the other party and send notification
-    const isRequester = exchange.requester._id.equals(userId);
-    const otherUser = isRequester ? exchange.receiver : exchange.requester;
+    res.json({
+      success: true,
+      exchange,
+      notifications: notifications.length // Optional: return count of created notifications
+    });
 
-    await sendNotification(
-      otherUser._id,
-      'Exchange Status Updated',
-      `Your exchange request has been ${status} by ${req.user.name}.`
-    );
-
-    res.json({ success: true, message: `Exchange ${status} successfully`, exchange });
-
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+  } catch (error) {
+    console.error('Error in updateExchangeStatus:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
+// Updated notification service
+async function createExchangeNotifications(exchange, status) {
+  const notificationsToCreate = [];
+
+  switch (status) {
+    case 'pending':
+      notificationsToCreate.push({
+        user: exchange.receiver._id,
+        title: 'New Exchange Request',
+        message: `${exchange.requester.name} wants to exchange ${exchange.toolsOffered.name} for your ${exchange.toolsRequested.name}`,
+        type: 'EXCHANGE_REQUEST',
+        relatedEntity: exchange._id,
+        relatedEntityModel: 'ExchangeRequest'
+      });
+      break;
+
+    case 'accepted':
+      notificationsToCreate.push({
+        user: exchange.requester._id,
+        title: 'Exchange Accepted',
+        message: `${exchange.receiver.name} accepted your exchange request`,
+        type: 'EXCHANGE_UPDATE',
+        relatedEntity: exchange._id,
+        relatedEntityModel: 'ExchangeRequest'
+      });
+      break;
+
+    case 'completed':
+      notificationsToCreate.push(
+        {
+          user: exchange.requester._id,
+          title: 'Exchange Completed',
+          message: `Your exchange of ${exchange.toolsOffered.name} for ${exchange.toolsRequested.name} is complete`,
+          type: 'EXCHANGE_UPDATE',
+          relatedEntity: exchange._id,
+          relatedEntityModel: 'ExchangeRequest'
+        },
+        {
+          user: exchange.receiver._id,
+          title: 'Exchange Completed',
+          message: `Your exchange of ${exchange.toolsRequested.name} for ${exchange.toolsOffered.name} is complete`,
+          type: 'EXCHANGE_UPDATE',
+          relatedEntity: exchange._id,
+          relatedEntityModel: 'ExchangeRequest'
+        }
+      );
+      break;
+  }
+
+  // Save all notifications to database
+  if (notificationsToCreate.length > 0) {
+    return await Notification.insertMany(notificationsToCreate);
+  }
+
+  return [];
+}

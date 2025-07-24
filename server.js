@@ -11,7 +11,6 @@ const toolsRoute = require('./routes/toolsRoute');
 const notificationRoute = require('./routes/notificationRoute');
 const dashboardRoute = require('./routes/dashboardRoute');
 const exchangeRoute = require('./routes/exchangeRoute');
-// const purchaseRoute = require('./routes/purchaseRoute')
 const cartRoute = require('./routes/cartRoute')
 const upload = require('./middleware/upload');
 
@@ -55,7 +54,6 @@ app.use('/api/exchange', exchangeRoute);
 app.use('/api/notifications', notificationRoute);
 app.use('/api/dashboard', dashboardRoute);
 app.use('/api/cart', cartRoute);
-// app.use('/api/purchase', purchaseRoute)
 // ✅ Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);

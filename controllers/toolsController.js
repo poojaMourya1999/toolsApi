@@ -1,15 +1,13 @@
 const mongoose = require('mongoose');
 const Tools = require('../models/Tools');
 const Cart = require('../models/Cart');
-const Purchase = require('../models/Purchase')
-const sendNotification = require('../utils/sendNotification');
 const getToolsWithCartStatus = require('../utils/getToolsWithCartStatus');
 const Razorpay = require('razorpay');
 const instance = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET
 });
-
+const Notification = require('../models/Notification');
 
 // 1. Create tool
 exports.createTools = async (req, res) => {
@@ -25,6 +23,16 @@ exports.createTools = async (req, res) => {
       owner: req.user._id,
     });
 
+    const notification = new Notification({
+      user: req.user._id, // or the relevant user ID
+      title: 'New Tool Available',
+      message: `${req.user.name} has added a new tool: ${tools.name}`,
+      type: 'TOOL_ADDED',
+      relatedEntity: tools._id,
+      relatedEntityModel: 'Tool'
+    });
+
+    await notification.save();
     // Populate owner details (name, email, etc.)
     tools = await tools.populate('owner', 'name email');
     res.status(201).json(tools);
@@ -155,65 +163,65 @@ exports.deleteTool = async (req, res) => {
 //   }
 // };
 
-exports.buyTool = async (req, res) => {
-  try {
-    const { toolId } = req.params;
-    const { quantity, paymentId, orderId } = req.body;
-    const userId = req.user._id;
+// exports.buyTool = async (req, res) => {
+//   try {
+//     const { toolId } = req.params;
+//     const { quantity, paymentId, orderId } = req.body;
+//     const userId = req.user._id;
 
-    // Verify payment with Razorpay
-    const payment = await instance.payments.fetch(paymentId);
-    if (payment.status !== 'captured') {
-      return res.status(400).json({ error: 'Payment not completed' });
-    }
+//     // Verify payment with Razorpay
+//     const payment = await instance.payments.fetch(paymentId);
+//     if (payment.status !== 'captured') {
+//       return res.status(400).json({ error: 'Payment not completed' });
+//     }
 
-    // Process the purchase
-    const tool = await Tools.findById(toolId);
-    tool.quantity -= quantity;
-    if (tool.quantity <= 0) {
-      tool.status = 'sold';
-      tool.buyer = userId;
-    }
-    await tool.save();
+//     // Process the purchase
+//     const tool = await Tools.findById(toolId);
+//     tool.quantity -= quantity;
+//     if (tool.quantity <= 0) {
+//       tool.status = 'sold';
+//       tool.buyer = userId;
+//     }
+//     await tool.save();
 
-    // Create purchase record
-    const purchase = await Purchase.create({
-      tool: toolId,
-      buyer: userId,
-      seller: tool.owner,
-      quantity,
-      price: tool.price * quantity,
-      paymentMethod: 'razorpay',
-      transactionId: paymentId,
-      status: 'completed'
-    });
+//     // Create purchase record
+//     const purchase = await Purchase.create({
+//       tool: toolId,
+//       buyer: userId,
+//       seller: tool.owner,
+//       quantity,
+//       price: tool.price * quantity,
+//       paymentMethod: 'razorpay',
+//       transactionId: paymentId,
+//       status: 'completed'
+//     });
 
-    res.json({
-      message: 'Purchase completed successfully',
-      purchase
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+//     res.json({
+//       message: 'Purchase completed successfully',
+//       purchase
+//     });
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
 // 8. Change tool status (manual toggle)
-exports.changeToolStatus = async (req, res) => {
-  try {
-    const { status } = req.body;
-    if (!['available', 'pending_exchange', 'sold'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' });
-    }
-    const updatedTool = await Tools.findOneAndUpdate(
-      { _id: req.params.id, owner: req.user._id },
-      { status },
-      { new: true }
-    );
-    if (!updatedTool) return res.status(404).json({ error: 'Tool not found or unauthorized' });
-    res.json({ message: 'Status updated', tool: updatedTool });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+// exports.changeToolStatus = async (req, res) => {
+//   try {
+//     const { status } = req.body;
+//     if (!['available', 'pending_exchange', 'sold'].includes(status)) {
+//       return res.status(400).json({ error: 'Invalid status' });
+//     }
+//     const updatedTool = await Tools.findOneAndUpdate(
+//       { _id: req.params.id, owner: req.user._id },
+//       { status },
+//       { new: true }
+//     );
+//     if (!updatedTool) return res.status(404).json({ error: 'Tool not found or unauthorized' });
+//     res.json({ message: 'Status updated', tool: updatedTool });
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
 
 // 9. Add to Cart with quantity support
 // Updated addToCart with proper conflict handling
@@ -371,25 +379,41 @@ exports.createOrder = async (req, res) => {
   try {
     const { toolId, quantity, amount } = req.body;
 
-    // Validate tool availability
+    // 1. Validate tool
     const tool = await Tools.findById(toolId);
     if (!tool || tool.status !== 'available' || tool.quantity < quantity) {
-      return res.status(400).json({ error: 'Tool not available' });
+      return res.status(400).json({ error: 'Tool not available or insufficient quantity' });
     }
 
-    // Create Razorpay order
+    // 2. Create Razorpay order
     const order = await instance.orders.create({
-      amount: amount,
+      amount: amount * 100, // Razorpay expects amount in paise
       currency: 'INR',
-      receipt: `order_${toolId}_${Date.now()}`
+      receipt: `order_${toolId}_${Date.now()}`,
     });
 
-    res.json({
-      orderId: order.id,
-      amount: order.amount
+    // 3. Send notification (optional)
+    const notification = new Notification({
+      user: req.user._id,
+      title: 'Tool Purchase Initiated',
+      message: `You initiated purchase for ${tool.name} (Qty: ${quantity})`,
+      type: 'ORDER_CREATED',
+      relatedEntity: tool._id,
+      relatedEntityModel: 'Tool',
     });
+    await notification.save();
+
+    // 4. Respond with order info
+    res.json({
+      success: true,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+    });
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Order creation failed:', err);
+    res.status(500).json({ error: 'Failed to create order', details: err.message });
   }
 };
 

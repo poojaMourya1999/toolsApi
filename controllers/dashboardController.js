@@ -5,11 +5,15 @@ exports.getDashboardStats = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // Get counts in parallel for better performance
     const [userToolsCount, exchangeToolsCount, totalToolsCount] = await Promise.all([
       Tools.countDocuments({ owner: userId }),
-      ExchangeRequest.countDocuments({ owner: userId }),
-      Tools.countDocuments() // Or add any filter if needed for total tools
+      ExchangeRequest.countDocuments({
+        $or: [
+          { requester: userId },
+          { receiver: userId }
+        ]
+      }),
+      Tools.countDocuments()
     ]);
 
     res.json({
